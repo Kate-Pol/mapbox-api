@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Display buildings in 3D</title>
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.13.0/mapbox-gl.css" rel="stylesheet">
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.13.0/mapbox-gl.js"></script>
+    <!-- Load the `mapbox-gl-geocoder` plugin. -->
+    <script 
+        src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.0/mapbox-gl-geocoder.min.js"></script>
+    <link rel="stylesheet" 
+        href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.0/mapbox-gl-geocoder.css" 
+        type="text/css">
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+        }
+
+        #map {
+            width: 80%;
+            height: 500px;
+            border-radius: 10px;
+            border: 1px solid orange;
+            flex-grow: 1;
+        }
+
+        #footer {
+            width: 100%;
+            position: absolute;
+            bottom: 0;
+        }
+
+        #container {
+            display: flex;
+            height: 100%;
+        }
+
+        #sidebar {
+            width: 300px;
+            flex-shrink: 0;
+            height: 100%;
+        }
+
+        #marker-h {
+            width: 20px;
+            height: 20px;
+            background-image: url('image/hospital.svg'); 
+        }
+
+        #marker-dog_park {
+            width: 20px;
+            height: 20px;
+            background-image: url('image/dog-park.svg'); 
+        }
+
+    </style>
+</head>
+
+<body>
+
+    <!-- Header -->
+    <header id="header" class="bg-dark pt-5">
+        <div class="container">
+            <h1 class="text-light">Mapbox</h1>
+        </div>
+    </footer>
+
+    <!-- Footer -->
+    <footer id="footer" class="bg-dark pt-5">
+        <div class="container">
+            <p class="text-light text-center">
+                &copy; Copyright reserved. Designed and developed by "Citizen Project"
+            </p>
+        </div>
+    </footer>
+
+    <div id="container">
+        <div id="sidebar">
+            <button id="reset-view">Reset the Map</button>
+        </div>
+        <div id="map"></div>
+    </div>
+
+    <script>
+        const INITIAL_CENTER = [-73.950248, 40.761356]
+        const INITIAL_ZOOM = 15
+
+        // My personal access Token NEED TO CHANGE ------------------------------------------------------------------->
+        mapboxgl.accessToken = 'pk.eyJ1Ijoia2F0ZTEiLCJhIjoiY2xlaHNoOWxzMGpvODNxcGh5b25xOHM5NyJ9.toujSn1apzOlPHophxbtIQ';
+        const map = new mapboxgl.Map({
+            // Choose from Mapbox's core styles, or make your own style with Mapbox Studio
+            style: 'mapbox://styles/mapbox/light-v11',
+            center: INITIAL_CENTER,
+            zoom: INITIAL_ZOOM,
+            pitch: 45,
+            bearing: -17.6,
+            container: 'map',
+            antialias: true, 
+            projection: 'globe',
+        });
+
+        // Add the control to the map.
+        map.addControl(
+            new MapboxGeocoder({
+                accessToken: mapboxgl.accessToken,
+                mapboxgl: mapboxgl
+            })
+        );
+
+        map.on('style.load', () => {
+            // Insert the layer beneath any symbol layer.
+            const layers = map.getStyle().layers;
+            const labelLayerId = layers.find(
+                (layer) => layer.type === 'symbol' && layer.layout['text-field']
+            ).id;
+
+            // The 'building' layer in the Mapbox Streets
+            // vector tileset contains building height data
+            // from OpenStreetMap.
+            map.addLayer(
+                {
+                    'id': 'add-3d-buildings',
+                    'source': 'composite',
+                    'source-layer': 'building',
+                    'filter': ['==', 'extrude', 'true'],
+                    'type': 'fill-extrusion',
+                    'minzoom': 15,
+                    'paint': {
+                        'fill-extrusion-color': '#aaa',
+
+                        // Use an 'interpolate' expression to
+                        // add a smooth transition effect to
+                        // the buildings as the user zooms in.
+                        'fill-extrusion-height': [
+                            'interpolate',
+                            ['linear'],
+                            ['zoom'],
+                            15,
+                            0,
+                            15.05,
+                            ['get', 'height']
+                        ],
+                        'fill-extrusion-base': [
+                            'interpolate',
+                            ['linear'],
+                            ['zoom'],
+                            15,
+                            0,
+                            15.05,
+                            ['get', 'min_height']
+                        ],
+                        'fill-extrusion-opacity': 0.6
+                    }
+                },
+                labelLayerId
+            );
+        });
+
+        // create the popup for Island marker 
+        const popup = new mapboxgl.Popup({ offset: 25 }).setText(
+            'Was named Roosevelt Island (in honor of Franklin D. Roosevelt) in 1973.'
+        );
+
+        // Create a Marker Roosevelt Island and add it to the map.
+        const marker1 = new mapboxgl.Marker({
+            color: '#f74af2',
+            scale: 0.6
+        })
+            .setLngLat([-73.950248, 40.761356])
+            .setPopup(popup)
+            .addTo(map);
+
+        map.on('load', () => {
+            // Set the default atmosphere style
+            map.setFog({});
+        });
+
+        // reset the map view
+        document.querySelector('#reset-view').addEventListener('click', () => {
+            map.flyTo({
+                center: INITIAL_CENTER,
+                zoom: INITIAL_ZOOM,
+            })
+        })
+
+        // create DOM element for the marker
+        const el = document.createElement('div');
+        el.id = 'marker-h';
+
+        // Create a Marker for Hospital and add it to the map.
+        const marker_hospital_1 = new mapboxgl.Marker(el)
+            .setLngLat([-73.94231025810949, 40.770448148765865])
+            .setPopup(new mapboxgl.Popup({ offset: 0 }).setText('NYC Health + Hospitals/Coler'))
+            .addTo(map);
+
+        // create DOM element for the marker - dog park
+        const el_2 = document.createElement('div');
+        el_2.id = 'marker-dog_park';
+
+        // Create a Marker for Dog park and add it to the map.
+        const marker_dog_park = new mapboxgl.Marker(el_2)
+            .setLngLat([-73.9413781162972, 40.76939124369372])
+            .setPopup(new mapboxgl.Popup({ offset: 0 }).setText('Dog Park'))
+            .addTo(map);
+
+
+    </script>
+
+</body>
+
+</html>
